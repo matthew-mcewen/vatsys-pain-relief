@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- vatSys itself targets .NET Framework 4.7.2; plugins must match. -->
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>PainReliefPlugin</AssemblyName>
+    <RootNamespace>PainRelief</RootNamespace>
+    <Version>0.1.0</Version>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!-- Where vatSys is installed. Override with -p:VatSysDir="..." if yours is elsewhere. -->
+    <VatSysDir Condition="'$(VatSysDir)' == ''">C:\Program Files (x86)\vatSys\bin</VatSysDir>
+
+    <!-- Used only when building with -p:Deploy=true. -->
+    <DeployDir Condition="'$(DeployDir)' == ''">$(USERPROFILE)\Documents\vatSys Files\Profiles\Australia\Plugins\PainRelief</DeployDir>
+
+    <!-- vatSys.exe is 32-bit; the plugin is AnyCPU and loads into it fine. -->
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lets this build without the .NET Framework 4.7.2 Developer Pack installed. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.ComponentModel.Composition" />
+
+    <!-- Private=false: compile against these, but don't copy them next to the plugin. -->
+    <Reference Include="vatSys">
+      <HintPath>$(VatSysDir)\vatSys.exe</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RossCarlson.Vatsim.Network">
+      <HintPath>$(VatSysDir)\RossCarlson.Vatsim.Network.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="DeployToVatSys" AfterTargets="Build" Condition="'$(Deploy)' == 'true'">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) to $(DeployDir)" />
+  </Target>
+
+</Project>
