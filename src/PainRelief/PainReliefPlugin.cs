@@ -16,6 +16,7 @@ namespace PainRelief
         internal const string ErrorSource = "Pain Relief";
 
         private readonly HandoffAutoActivate handoffAutoActivate;
+        private readonly HandoffChime handoffChime;
 
         public string Name => "Pain Relief";
 
@@ -23,7 +24,16 @@ namespace PainRelief
         {
             try
             {
-                handoffAutoActivate = new HandoffAutoActivate();
+                handoffChime = new HandoffChime();
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start handoff chime. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                handoffAutoActivate = new HandoffAutoActivate(handoffChime);
             }
             catch (Exception ex)
             {

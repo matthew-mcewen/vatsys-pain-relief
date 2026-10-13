@@ -38,12 +38,15 @@ namespace PainRelief
         private static readonly FieldInfo HandoffEventField = typeof(FSDSession).GetField("HandoffReceived", NonPublicInstance);
 
         private readonly EventHandler<DataReceivedEventArgs<PDUHandoff>> handler;
+        private readonly HandoffChime chime;
         private readonly object hookLock = new object();
         private FSDSession hookedSession;
         private bool hookFailureReported;
 
-        public HandoffAutoActivate()
+        /// <param name="chime">Told about every handoff addressed to us; may be null.</param>
+        public HandoffAutoActivate(HandoffChime chime)
         {
+            this.chime = chime;
             handler = OnHandoffReceived;
             Network.Connected += (sender, e) => EnsureHooked();
             EnsureHooked();
@@ -101,6 +104,10 @@ namespace PainRelief
                 if (fdr == null)
                     return;
 
+                // Every handoff to us gets the unaccepted-handoff chime, whether or not the FDR
+                // needs activating below.
+                chime?.HandoffReceived(fdr, pdu.From);
+
                 if (fdr.State != FDP2.FDR.FDRStates.STATE_INACTIVE &&
                     fdr.State != FDP2.FDR.FDRStates.STATE_PREACTIVE &&
                     fdr.State != FDP2.FDR.FDRStates.STATE_COORDINATED)
@@ -138,10 +145,58 @@ namespace PainRelief
                 // that vatSys processes next can't be refused.
                 if (fdr.State < FDP2.FDR.FDRStates.STATE_UNCONTROLLED)
                     fdr.State = FDP2.FDR.FDRStates.STATE_CONTROLLED;
+
+                PlaceBeforeBoundary(fdr, atd, now);
             }
             catch (Exception ex)
             {
                 Errors.Add(new Exception("Could not auto-activate FDR for incoming handoff. " + ex.Message, ex), PainReliefPlugin.ErrorSource);
+            }
+        }
+
+        /// <summary>
+        /// Refines the ATD so the aircraft is shown a fixed time before it enters our airspace
+        /// (10 min for a _CTR position, 5 min for _APP; see HandoffAtd). Only ever runs once, as
+        /// the FDR is activated, so an ATD a controller types in afterwards is left alone.
+        ///
+        /// The FDR has just been activated with <paramref name="activatedAtd"/>, so vatSys can now
+        /// tell us when that puts the aircraft into the sectors we control. We shift the ATD by the
+        /// difference. If vatSys has no entry time (route never enters our sectors) or we are not
+        /// a _CTR/_APP position, the ATD from activation stands.
+        /// </summary>
+        private static void PlaceBeforeBoundary(FDP2.FDR fdr, DateTime activatedAtd, DateTime now)
+        {
+            try
+            {
+                TimeSpan? lead = HandoffAtd.LeadForCallsign(Network.Me.Callsign);
+                if (lead == null)
+                    return;
+
+                DateTime entry = MMI.GetSectorEntryTime(fdr);
+                DateTime? wanted = HandoffAtd.AtdForBoundary(now, activatedAtd, entry, lead.Value);
+                if (wanted == null)
+                    return;
+
+                TimeSpan shift = wanted.Value - activatedAtd;
+                if (Math.Abs(shift.TotalSeconds) < 5)
+                    return;
+
+                FDP2.DepartFDR(fdr, wanted.Value, true);
+
+                // The entry time should have moved by exactly the shift. If it didn't, vatSys
+                // ignored the second ATD (or hasn't recalculated yet) and the aircraft is not
+                // where we meant to put it.
+                DateTime after = MMI.GetSectorEntryTime(fdr);
+                if (Math.Abs((after - (entry + shift)).TotalSeconds) > 60)
+                {
+                    Errors.Add(new Exception(
+                        "Could not move " + fdr.Callsign + " to " + (int)lead.Value.TotalMinutes +
+                        " minutes before the boundary: vatSys did not apply the new ATD."), PainReliefPlugin.ErrorSource);
+                }
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not position handoff before the airspace boundary. " + ex.Message, ex), PainReliefPlugin.ErrorSource);
             }
         }
     }

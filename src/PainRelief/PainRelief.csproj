@@ -38,8 +38,13 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The chime played for unaccepted handoffs; sits next to the DLL. -->
+    <None Update="chime.wav" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <Target Name="DeployToVatSys" AfterTargets="Build" Condition="'$(Deploy)' == 'true'">
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="$(TargetPath);$(MSBuildProjectDirectory)\chime.wav" DestinationFolder="$(DeployDir)" />
     <Message Importance="high" Text="Deployed $(TargetFileName) to $(DeployDir)" />
   </Target>
 

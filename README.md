@@ -12,11 +12,19 @@ With this plugin, when a handoff addressed to you arrives for such an FDR, it is
 
 The departure time used for the activation is normally "now". If you are connected as a centre position whose callsign starts with a four-letter FIR code (`WAAF_BI_CTR`, `VTBB_CTR`, ...) and the flight plan remarks include an elapsed time for that FIR (`EET/WAAF0623`), it is set to now minus that elapsed time instead, since the aircraft is crossing into your FIR about now. Where a route enters the same FIR more than once, the first entry is used.
 
+If your callsign ends in `_CTR` or `_APP`, the aircraft is then placed a fixed time before the point where its route enters the sectors you control: 10 minutes for `_CTR`, 5 minutes for `_APP`. After activating, the plugin reads vatSys's own sector entry time for the FDR and shifts the ATD so that entry time is that far in the future. Ground speed is whatever vatSys uses (the FDR's TAS). If the route never enters your sectors, or you are not a `_CTR`/`_APP` position, the departure time above stands. This happens once, at activation only: an ATD you type into the FDR afterwards is never overwritten.
+
+Only the FDR is changed; nothing about track display is touched.
+
 Handoffs for FDRs that are already active, or addressed to someone else, are not touched.
+
+### Chime for an unaccepted handoff
+
+When a handoff addressed to you arrives and you haven't accepted it 5 seconds later, a chime plays every 2 seconds until you accept it. It uses `chime.wav` from the plugin's folder (replace it with any WAV you like), or a Windows system sound if that file is missing. The plugin watches the same handoff event described below and `fdr.IsTrackedByMe`, and never changes the FDR or any track. As a safety net it stops after 2 minutes, since a sender can cancel a handoff without vatSys telling the plugin.
 
 ## Install
 
-Copy `PainReliefPlugin.dll` into a folder under your profile's `Plugins` directory, e.g.
+Copy `PainReliefPlugin.dll` and `chime.wav` into a folder under your profile's `Plugins` directory, e.g.
 
 ```
 Documents\vatSys Files\Profiles\<Profile>\Plugins\PainRelief\PainReliefPlugin.dll
