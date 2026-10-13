@@ -20,10 +20,11 @@ namespace PainRelief
         /// changes that break existing behaviour, minor for new features, patch for fixes.
         /// Shown in the plugin's name in vatSys.
         /// </summary>
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.0";
 
         private readonly HandoffAutoActivate handoffAutoActivate;
         private readonly HandoffChime handoffChime;
+        private readonly VscsCallsignLimit vscsCallsignLimit;
 
         public string Name => "Pain Relief v" + Version;
 
@@ -45,6 +46,15 @@ namespace PainRelief
             catch (Exception ex)
             {
                 Errors.Add(new Exception("Could not start handoff auto-activate. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                vscsCallsignLimit = new VscsCallsignLimit();
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start VSCS callsign limit removal. " + ex.Message, ex), ErrorSource);
             }
         }
 

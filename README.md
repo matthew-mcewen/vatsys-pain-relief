@@ -22,6 +22,10 @@ Handoffs for FDRs that are already active, or addressed to someone else, are not
 
 When a handoff addressed to you arrives and you haven't accepted it 5 seconds later, a chime plays every 2 seconds until you accept it. It uses `chime.wav` from the plugin's folder (replace it with any WAV you like), or a Windows system sound if that file is missing. The plugin watches the same handoff event described below and `fdr.IsTrackedByMe`, and never changes the FDR or any track. As a safety net it stops after 2 minutes, since a sender can cancel a handoff without vatSys telling the plugin.
 
+### Unlimited callsign length when adding a VSCS frequency
+
+vatSys limits the callsign box on the VSCS *Add Freq* page to 10 characters, which cuts off longer callsigns. With this plugin the limit is lifted, so the full callsign can be typed. It changes only that text box, and only its length limit.
+
 ## Install
 
 Copy `PainReliefPlugin.dll` and `chime.wav` into a folder under your profile's `Plugins` directory, e.g.
@@ -50,3 +54,5 @@ Output is `src/PainRelief/bin/Release/PainReliefPlugin.dll`.
 vatSys has no plugin hook for handoffs, and by the time its own handoff handler has finished the refusal is already sent. So the plugin uses reflection to place its handler ahead of vatSys's on the network session's `HandoffReceived` event; see [HandoffAutoActivate.cs](src/PainRelief/HandoffAutoActivate.cs).
 
 This depends on three non-public names inside vatSys (`Network.Instance`, `Network.VATSIM`, `FSDSession.HandoffReceived`), checked against vatSys 0.4.9305. If an update renames them, the plugin raises a single "Pain Relief" error in the vatSys error window and vatSys carries on with its stock behaviour.
+
+The VSCS callsign fix reaches two private fields (`MMI.VSCSWindow` and the window's `vscsControl`, then `VSCSControlDX.addFreqNameField`), checked against the same vatSys build. If an update renames them the plugin raises one "Pain Relief" error and vatSys keeps its 10-character limit.
