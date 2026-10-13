@@ -15,10 +15,17 @@ namespace PainRelief
     {
         internal const string ErrorSource = "Pain Relief";
 
+        /// <summary>
+        /// The plugin's version (major.minor.patch). Bump this with every release: major for
+        /// changes that break existing behaviour, minor for new features, patch for fixes.
+        /// Shown in the plugin's name in vatSys.
+        /// </summary>
+        public const string Version = "1.1.0";
+
         private readonly HandoffAutoActivate handoffAutoActivate;
         private readonly HandoffChime handoffChime;
 
-        public string Name => "Pain Relief";
+        public string Name => "Pain Relief v" + Version;
 
         public PainReliefPlugin()
         {

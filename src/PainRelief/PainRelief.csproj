@@ -5,7 +5,7 @@
     <TargetFramework>net472</TargetFramework>
     <AssemblyName>PainReliefPlugin</AssemblyName>
     <RootNamespace>PainRelief</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>1.1.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
