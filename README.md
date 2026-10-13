@@ -1,5 +1,5 @@
 # vatSys Pain Relief
-<img width="1204" height="1202" alt="PainReliefPlugin" src="https://github.com/user-attachments/assets/9deff198-6bda-4ff9-9dbe-6bd7b26fef6d" />
+<img width="300" height="300" alt="PainReliefPlugin" src="https://github.com/user-attachments/assets/9deff198-6bda-4ff9-9dbe-6bd7b26fef6d" />
 
 A [vatSys](https://virtualairtrafficsystem.com/) plugin that smooths over rough edges when your neighbouring controller is on a different client (mostly EuroScope).
 
