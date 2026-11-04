@@ -27,6 +27,8 @@ When a handoff addressed to you arrives and you haven't accepted it 5 seconds la
 
 vatSys limits the callsign box on the VSCS *Add Freq* page to 10 characters, which cuts off longer callsigns. With this plugin the limit is lifted, so the full callsign can be typed. It changes only that text box, and only its length limit.
 
+This fix is also in the VSCS Tweaks plugin. If both plugins are installed, Pain Relief leaves it to VSCS Tweaks.
+
 ## Install
 
 Copy `PainReliefPlugin.dll` and `chime.wav` into a folder under your profile's `Plugins` directory, e.g.

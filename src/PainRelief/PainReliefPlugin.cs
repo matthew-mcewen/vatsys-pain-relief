@@ -20,7 +20,7 @@ namespace PainRelief
         /// changes that break existing behaviour, minor for new features, patch for fixes.
         /// Shown in the plugin's name in vatSys.
         /// </summary>
-        public const string Version = "1.2.0";
+        public const string Version = "1.2.1";
 
         private readonly HandoffAutoActivate handoffAutoActivate;
         private readonly HandoffChime handoffChime;
