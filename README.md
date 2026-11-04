@@ -29,6 +29,10 @@ vatSys limits the callsign box on the VSCS *Add Freq* page to 10 characters, whi
 
 This fix is also in the VSCS Tweaks plugin. If both plugins are installed, Pain Relief leaves it to VSCS Tweaks.
 
+### About and Sector Configuration windows under display scaling
+
+With Windows display scaling above 100%, the About window collapses into a narrow, nearly empty box with a cut-off title. The Sector Configuration Window also cuts off sector names at both ends ("T - Jakarta Grou" for "JT - Jakarta Group"). The plugin re-lays out the About window so every line shows in full. It also draws each sector name from its left edge across the full width of the list, ending with "..." if it is still too long. Hover over a name to see all of it. Nothing else about either window changes.
+
 ## Install
 
 Copy `PainReliefPlugin.dll` and `chime.wav` into a folder under your profile's `Plugins` directory, e.g.
@@ -59,3 +63,5 @@ vatSys has no plugin hook for handoffs, and by the time its own handoff handler 
 This depends on three non-public names inside vatSys (`Network.Instance`, `Network.VATSIM`, `FSDSession.HandoffReceived`), checked against vatSys 0.4.9305. If an update renames them, the plugin raises a single "Pain Relief" error in the vatSys error window and vatSys carries on with its stock behaviour.
 
 The VSCS callsign fix reaches two private fields (`MMI.VSCSWindow` and the window's `vscsControl`, then `VSCSControlDX.addFreqNameField`), checked against the same vatSys build. If an update renames them the plugin raises one "Pain Relief" error and vatSys keeps its 10-character limit.
+
+The display-scaling fixes exist because vatSys starts without DPI awareness, then becomes per-monitor DPI-aware when its built-in browser (CEF) starts up. After that, WinForms draws the 16px Terminus font wider than the native controls laid it out, which breaks both windows. The fixes reach `MMI.MainForm` and `MMI.SectorsWindow`, plus private members of `AboutWindow` (`tableLayoutPanel1`, `insetPanel1`, `genericButton1`) and `SectorsWindow` (`currSectorsView`, `availSectorsView`, `SectorsView_DrawNode`), checked against the same vatSys build. If an update renames them, the plugin raises one "Pain Relief" error and the windows look as they do without the plugin.

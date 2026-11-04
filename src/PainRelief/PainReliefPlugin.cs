@@ -25,6 +25,8 @@ namespace PainRelief
         private readonly HandoffAutoActivate handoffAutoActivate;
         private readonly HandoffChime handoffChime;
         private readonly VscsCallsignLimit vscsCallsignLimit;
+        private readonly AboutWindowDpiFix aboutWindowDpiFix;
+        private readonly SectorWindowDpiFix sectorWindowDpiFix;
 
         public string Name => "Pain Relief v" + Version;
 
@@ -55,6 +57,24 @@ namespace PainRelief
             catch (Exception ex)
             {
                 Errors.Add(new Exception("Could not start VSCS callsign limit removal. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                aboutWindowDpiFix = new AboutWindowDpiFix();
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start About window scaling fix. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                sectorWindowDpiFix = new SectorWindowDpiFix();
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start Sector Configuration Window scaling fix. " + ex.Message, ex), ErrorSource);
             }
         }
 
