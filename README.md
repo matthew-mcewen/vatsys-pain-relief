@@ -71,10 +71,14 @@ Requires the [.NET SDK](https://dotnet.microsoft.com/download) (8 or later) and 
 dotnet build src/PainRelief -c Release
 ```
 
-Output is `src/PainRelief/bin/Release/PainReliefPlugin.dll`.
+A Release build puts everything in `src/PainRelief/bin/Release/`:
 
-- vatSys installed somewhere other than `C:\Program Files (x86)\vatSys\bin`? Add `-p:VatSysDir="<path to bin>"`.
-- Add `-p:Deploy=true` to copy the DLL into the Australia profile's `Plugins\PainRelief` folder (change with `-p:DeployDir="<folder>"`). vatSys must be closed.
+- `PainRelief\`: the folder to copy into a profile's `Plugins` directory (`PainReliefPlugin.dll`, `chime.wav`, `rejected.wav`).
+- `PainRelief-v<version>.zip`: the same folder, zipped. Not committed.
+
+The build never copies anything into a vatSys profile; install it by hand as above.
+
+vatSys installed somewhere other than `C:\Program Files (x86)\vatSys\bin`? Add `-p:VatSysDir="<path to bin>"`.
 
 ## How it works, and what can break
 

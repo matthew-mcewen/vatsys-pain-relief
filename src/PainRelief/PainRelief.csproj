@@ -14,9 +14,6 @@
     <!-- Where vatSys is installed. Override with -p:VatSysDir="..." if yours is elsewhere. -->
     <VatSysDir Condition="'$(VatSysDir)' == ''">C:\Program Files (x86)\vatSys\bin</VatSysDir>
 
-    <!-- Used only when building with -p:Deploy=true. -->
-    <DeployDir Condition="'$(DeployDir)' == ''">$(USERPROFILE)\Documents\vatSys Files\Profiles\Australia\Plugins\PainRelief</DeployDir>
-
     <!-- vatSys.exe is 32-bit; the plugin is AnyCPU and loads into it fine. -->
     <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
   </PropertyGroup>
@@ -62,9 +59,26 @@
     <None Update="rejected.wav" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <Target Name="DeployToVatSys" AfterTargets="Build" Condition="'$(Deploy)' == 'true'">
-    <Copy SourceFiles="$(TargetPath);$(MSBuildProjectDirectory)\chime.wav;$(MSBuildProjectDirectory)\rejected.wav" DestinationFolder="$(DeployDir)" />
-    <Message Importance="high" Text="Deployed $(TargetFileName) to $(DeployDir)" />
+  <!-- Release builds also package the plugin, ready to hand out:
+         bin\Release\PainRelief\                    the folder to drop into a profile's Plugins folder
+         bin\Release\PainRelief-v<Version>.zip      the same folder, zipped
+       The zip holds the PainRelief folder itself, so unzipping into Plugins gives Plugins\PainRelief\. -->
+  <Target Name="PackagePlugin" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <PackageStage>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)package\</PackageStage>
+      <PackageFolder>$(OutDir)PainRelief\</PackageFolder>
+      <PackageZip>$(OutDir)PainRelief-v$(Version).zip</PackageZip>
+    </PropertyGroup>
+    <ItemGroup>
+      <PluginFile Include="$(TargetPath);$(MSBuildProjectDirectory)\chime.wav;$(MSBuildProjectDirectory)\rejected.wav" />
+    </ItemGroup>
+
+    <!-- Start clean so files removed from the plugin don't linger in the package. -->
+    <RemoveDir Directories="$(PackageStage);$(PackageFolder)" />
+    <Copy SourceFiles="@(PluginFile)" DestinationFolder="$(PackageStage)PainRelief" />
+    <Copy SourceFiles="@(PluginFile)" DestinationFolder="$(PackageFolder)" />
+    <ZipDirectory SourceDirectory="$(PackageStage)" DestinationFile="$(PackageZip)" Overwrite="true" />
+    <Message Importance="high" Text="Packaged $(PackageFolder) and $(PackageZip)" />
   </Target>
 
 </Project>

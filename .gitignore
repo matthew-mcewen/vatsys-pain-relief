@@ -1,4 +1,8 @@
-bin/
 obj/
 .vs/
 *.user
+# Release package zip; the PainRelief\ folder beside it is committed.
+PainRelief-v*.zip
+/src/PainRelief/bin/Debug
+# Test project build output.
+tests/*/bin/
