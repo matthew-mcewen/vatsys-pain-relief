@@ -23,6 +23,16 @@ Handoffs for FDRs that are already active, or addressed to someone else, are not
 
 When a handoff addressed to you arrives and you haven't accepted it 5 seconds later, a chime plays every 2 seconds until you accept it. It uses `chime.wav` from the plugin's folder (replace it with any WAV you like), or a Windows system sound if that file is missing. The plugin watches the same handoff event described below and `fdr.IsTrackedByMe`, and never changes the FDR or any track. As a safety net it stops after 2 minutes, since a sender can cancel a handoff without vatSys telling the plugin.
 
+### Sound when your handoff is refused
+
+When a controller refuses a handoff you made (the moment vatSys shows "Handoff refused by ..."), `rejected.wav` from the plugin's folder plays: a G and B♭ struck together twice. Replace it with any WAV you like; if the file is missing, a Windows system sound plays instead. A sender withdrawing a handoff they made to *you* arrives as the same network message, but makes no sound. The plugin only listens; nothing about the FDR or track is changed.
+
+### Reject an incoming handoff
+
+vatSys only lets you accept an incoming handoff or leave it sitting there. With this plugin, *Tools → Reject Handoff* lists every handoff addressed to you that you haven't accepted, as `<callsign>  from <sender>`. Pick one to refuse it: the sender gets a "handoff cancelled" back, which both vatSys and EuroScope show them as a refused handoff, the aircraft stays with them, and the FDR leaves handover-in on your side. The chime stops for that handoff straight away. If the sender hands it off again, that is a new handoff and chimes as normal.
+
+This uses the same two steps vatSys itself takes when it refuses a handoff for an inactive plan and when a sender cancels one.
+
 ### Unlimited callsign length when adding a VSCS frequency
 
 vatSys limits the callsign box on the VSCS *Add Freq* page to 10 characters, which cuts off longer callsigns. With this plugin the limit is lifted, so the full callsign can be typed. It changes only that text box, and only its length limit.
@@ -45,7 +55,7 @@ This fix is also in the VSCS Tweaks plugin. If both plugins are installed (VSCS 
 
 ## Install
 
-Copy `PainReliefPlugin.dll` and `chime.wav` into a folder under your profile's `Plugins` directory, e.g.
+Copy `PainReliefPlugin.dll`, `chime.wav` and `rejected.wav` into a folder under your profile's `Plugins` directory, e.g.
 
 ```
 Documents\vatSys Files\Profiles\<Profile>\Plugins\PainRelief\PainReliefPlugin.dll
@@ -71,6 +81,10 @@ Output is `src/PainRelief/bin/Release/PainReliefPlugin.dll`.
 vatSys has no plugin hook for handoffs, and by the time its own handoff handler has finished the refusal is already sent. So the plugin uses reflection to place its handler ahead of vatSys's on the network session's `HandoffReceived` event; see [HandoffAutoActivate.cs](src/PainRelief/HandoffAutoActivate.cs).
 
 This depends on three non-public names inside vatSys (`Network.Instance`, `Network.VATSIM`, `FSDSession.HandoffReceived`), checked against vatSys 0.4.9305. If an update renames them, the plugin raises a single "Pain Relief" error in the vatSys error window and vatSys carries on with its stock behaviour.
+
+The refused-handoff sound hooks `FSDSession.HandoffCancelledReceived` the same way, at the front of the event, because vatSys's own handler clears the handoff immediately. If that name changes, the plugin raises one "Pain Relief" error and there is no sound.
+
+Reject Handoff calls vatSys's internal `Network.CancelHandoff(FDR, NetworkATC)` (plus the public `FDP2.CancelHandoff`), checked against the same vatSys build. If an update renames it, picking a handoff raises one "Pain Relief" error and the handoff is left as it was.
 
 The VSCS callsign fix reaches two private fields (`MMI.VSCSWindow` and the window's `vscsControl`, then `VSCSControlDX.addFreqNameField`), checked against the same vatSys build. If an update renames them the plugin raises one "Pain Relief" error and vatSys keeps its 10-character limit.
 

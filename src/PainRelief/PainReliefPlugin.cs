@@ -24,6 +24,8 @@ namespace PainRelief
 
         private readonly HandoffAutoActivate handoffAutoActivate;
         private readonly HandoffChime handoffChime;
+        private readonly HandoffReject handoffReject;
+        private readonly HandoffRefusedChime handoffRefusedChime;
         private readonly VscsCallsignLimit vscsCallsignLimit;
         private readonly AboutWindowDpiFix aboutWindowDpiFix;
         private readonly SectorWindowDpiFix sectorWindowDpiFix;
@@ -52,6 +54,24 @@ namespace PainRelief
             catch (Exception ex)
             {
                 Errors.Add(new Exception("Could not start handoff auto-activate. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                handoffRefusedChime = new HandoffRefusedChime();
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start handoff refused sound. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                handoffReject = new HandoffReject(handoffChime);
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start reject handoff. " + ex.Message, ex), ErrorSource);
             }
 
             try
@@ -114,6 +134,7 @@ namespace PainRelief
             // FDR updates arrive constantly while connected, which makes this a cheap
             // safety net for re-installing the hook if the network session was replaced.
             handoffAutoActivate?.EnsureHooked();
+            handoffRefusedChime?.EnsureHooked();
         }
 
         public void OnRadarTrackUpdate(RDP.RadarTrack updated)

@@ -70,6 +70,15 @@ namespace PainRelief
             }
         }
 
+        /// <summary>We have rejected the handoff for this callsign; stop chiming about it.</summary>
+        public void HandoffRejected(string callsign)
+        {
+            if (callsign == null)
+                return;
+            lock (gate)
+                pending.Remove(callsign);
+        }
+
         private void Tick(object state)
         {
             // Never let two ticks overlap.

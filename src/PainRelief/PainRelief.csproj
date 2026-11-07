@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <!-- vatSys itself targets .NET Framework 4.7.2; plugins must match. -->
@@ -7,7 +7,7 @@
     <RootNamespace>PainRelief</RootNamespace>
     <!-- The plugin's version: the only place to set it. The code reads it from the built DLL.
          Bump major for changes that break existing behaviour, minor for features, patch for fixes. -->
-    <Version>1.3.0</Version>
+    <Version>1.3.1</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
@@ -58,10 +58,12 @@
   <ItemGroup>
     <!-- The chime played for unaccepted handoffs; sits next to the DLL. -->
     <None Update="chime.wav" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Played when a controller refuses a handoff we made. -->
+    <None Update="rejected.wav" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <Target Name="DeployToVatSys" AfterTargets="Build" Condition="'$(Deploy)' == 'true'">
-    <Copy SourceFiles="$(TargetPath);$(MSBuildProjectDirectory)\chime.wav" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="$(TargetPath);$(MSBuildProjectDirectory)\chime.wav;$(MSBuildProjectDirectory)\rejected.wav" DestinationFolder="$(DeployDir)" />
     <Message Importance="high" Text="Deployed $(TargetFileName) to $(DeployDir)" />
   </Target>
 
