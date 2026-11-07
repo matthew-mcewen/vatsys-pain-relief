@@ -5,7 +5,9 @@
     <TargetFramework>net472</TargetFramework>
     <AssemblyName>PainReliefPlugin</AssemblyName>
     <RootNamespace>PainRelief</RootNamespace>
-    <Version>1.2.2</Version>
+    <!-- The plugin's version: the only place to set it. The code reads it from the built DLL.
+         Bump major for changes that break existing behaviour, minor for features, patch for fixes. -->
+    <Version>1.3.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
@@ -32,6 +34,19 @@
     <!-- Private=false: compile against these, but don't copy them next to the plugin. -->
     <Reference Include="vatSys">
       <HintPath>$(VatSysDir)\vatSys.exe</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- The VSCS's Direct2D render target, for the VSCS hit-box scaling fix. -->
+    <Reference Include="SharpDX">
+      <HintPath>$(VatSysDir)\SharpDX.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SharpDX.Direct2D1">
+      <HintPath>$(VatSysDir)\SharpDX.Direct2D1.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SharpDX.Mathematics">
+      <HintPath>$(VatSysDir)\SharpDX.Mathematics.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="RossCarlson.Vatsim.Network">

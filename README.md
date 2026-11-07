@@ -27,11 +27,21 @@ When a handoff addressed to you arrives and you haven't accepted it 5 seconds la
 
 vatSys limits the callsign box on the VSCS *Add Freq* page to 10 characters, which cuts off longer callsigns. With this plugin the limit is lifted, so the full callsign can be typed. It changes only that text box, and only its length limit.
 
-This fix is also in the VSCS Tweaks plugin. If both plugins are installed, Pain Relief leaves it to VSCS Tweaks.
+This fix is also in the VSCS Tweaks plugin. If both plugins are installed (VSCS Tweaks 1.2.0 or later), Pain Relief leaves it to VSCS Tweaks.
 
 ### About and Sector Configuration windows under display scaling
 
 With Windows display scaling above 100%, the About window collapses into a narrow, nearly empty box with a cut-off title. The Sector Configuration Window also cuts off sector names at both ends ("T - Jakarta Grou" for "JT - Jakarta Group"). The plugin re-lays out the About window so every line shows in full. It also draws each sector name from its left edge across the full width of the list, ending with "..." if it is still too long. Hover over a name to see all of it. Nothing else about either window changes.
+
+The Display Settings window is also cut off at the bottom under display scaling, hiding the last brightness slider and the Reset button, and the checkboxes on the left run under the Brightness panel. The plugin resizes the window to fit its contents and moves the Brightness panel clear of the checkboxes.
+
+The Audio Settings window has the same trouble: the Emulation column is cut off ("VHFEmulatio", "Realistic H"), and the slider values are drawn over by the label under them. The plugin lays the left-hand controls out again at their real sizes and fits the window, with or without the Additional Audio Devices panel shown. It redoes this each time the window opens or *Advanced* is toggled, since vatSys resets the window width then.
+
+### VSCS clicks landing away from the drawn buttons
+
+When vatSys does its own DPI scaling (Properties → Compatibility → High DPI → *Scaling performed by: Application*), the VSCS is drawn larger than its click areas, so a click lands away from the button you aimed at. The plugin sets the VSCS's drawing back to one unit per pixel, so the buttons and click areas line up again. Nothing changes at 100% scaling or with *System* scaling.
+
+This fix is also in the VSCS Tweaks plugin. If both plugins are installed (VSCS Tweaks 1.2.0 or later), Pain Relief leaves it to VSCS Tweaks.
 
 ## Install
 
@@ -64,4 +74,6 @@ This depends on three non-public names inside vatSys (`Network.Instance`, `Netwo
 
 The VSCS callsign fix reaches two private fields (`MMI.VSCSWindow` and the window's `vscsControl`, then `VSCSControlDX.addFreqNameField`), checked against the same vatSys build. If an update renames them the plugin raises one "Pain Relief" error and vatSys keeps its 10-character limit.
 
-The display-scaling fixes exist because vatSys starts without DPI awareness, then becomes per-monitor DPI-aware when its built-in browser (CEF) starts up. After that, WinForms draws the 16px Terminus font wider than the native controls laid it out, which breaks both windows. The fixes reach `MMI.MainForm` and `MMI.SectorsWindow`, plus private members of `AboutWindow` (`tableLayoutPanel1`, `insetPanel1`, `genericButton1`) and `SectorsWindow` (`currSectorsView`, `availSectorsView`, `SectorsView_DrawNode`), checked against the same vatSys build. If an update renames them, the plugin raises one "Pain Relief" error and the windows look as they do without the plugin.
+The display-scaling fixes exist because vatSys starts without DPI awareness, then becomes per-monitor DPI-aware when its built-in browser (CEF) starts up. After that, WinForms draws the 16px Terminus font wider than the native controls laid it out, which breaks both windows. The fixes reach `MMI.MainForm` and `MMI.SectorsWindow`, plus private members of `AboutWindow` (`tableLayoutPanel1`, `insetPanel1`, `genericButton1`) and `SectorsWindow` (`currSectorsView`, `availSectorsView`, `SectorsView_DrawNode`), plus `MMI.DisplaySettingsWindow` and its `insetPanel1`, `tableLayoutPanel1`–`5`, and `MMI.AudioSettingsWindow` with the layout panels, sliders and labels it lays out (`tableLayoutPanel1`, `flowLayoutPanel1`, `insetPanel1`/`2`, `additionalDeviceLayoutPanel`, `additionalDevicePanel`–`3`, `advancedButton` and others), checked against the same vatSys build. If an update renames them, the plugin raises one "Pain Relief" error and the windows look as they do without the plugin.
+
+The VSCS fix reaches `MMI.VSCSWindow`, the window's `vscsControl`, and the control's Direct2D render target (`dc`, `dc_properties`), checked against the same vatSys build. If an update renames them the plugin raises one "Pain Relief" error and the VSCS keeps vatSys's own drawing.

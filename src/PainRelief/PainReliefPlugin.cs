@@ -16,17 +16,21 @@ namespace PainRelief
         internal const string ErrorSource = "Pain Relief";
 
         /// <summary>
-        /// The plugin's version (major.minor.patch). Bump this with every release: major for
-        /// changes that break existing behaviour, minor for new features, patch for fixes.
-        /// Shown in the plugin's name in vatSys.
+        /// The plugin's version (major.minor.patch), read from the built assembly and shown in
+        /// the plugin's name in vatSys. The one place to change it is &lt;Version&gt; in
+        /// PainRelief.csproj.
         /// </summary>
-        public const string Version = "1.2.1";
+        public static readonly string Version = typeof(PainReliefPlugin).Assembly.GetName().Version.ToString(3);
 
         private readonly HandoffAutoActivate handoffAutoActivate;
         private readonly HandoffChime handoffChime;
         private readonly VscsCallsignLimit vscsCallsignLimit;
         private readonly AboutWindowDpiFix aboutWindowDpiFix;
         private readonly SectorWindowDpiFix sectorWindowDpiFix;
+
+        private readonly DisplaySettingsWindowDpiFix displaySettingsWindowDpiFix;
+        private readonly VscsDpiFix vscsDpiFix;
+        private readonly AudioSettingsWindowDpiFix audioSettingsWindowDpiFix;
 
         public string Name => "Pain Relief v" + Version;
 
@@ -75,6 +79,33 @@ namespace PainRelief
             catch (Exception ex)
             {
                 Errors.Add(new Exception("Could not start Sector Configuration Window scaling fix. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                displaySettingsWindowDpiFix = new DisplaySettingsWindowDpiFix();
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start Display Settings window scaling fix. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                vscsDpiFix = new VscsDpiFix();
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start VSCS scaling fix. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                audioSettingsWindowDpiFix = new AudioSettingsWindowDpiFix();
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start Audio Settings window scaling fix. " + ex.Message, ex), ErrorSource);
             }
         }
 

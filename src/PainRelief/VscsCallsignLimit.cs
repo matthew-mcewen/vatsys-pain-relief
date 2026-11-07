@@ -19,15 +19,14 @@ namespace PainRelief
     ///
     /// Nothing else about the VSCS window is touched.
     ///
-    /// The VSCS Tweaks plugin has the same fix and takes precedence: if its assembly
-    /// (VscsTweaksPlugin) is loaded, this one stops and leaves the field to it. The check runs
-    /// on the timer rather than at startup, since vatSys may load VSCS Tweaks after this plugin.
+    /// The VSCS Tweaks plugin has the same fix and takes precedence: if it is loaded (see
+    /// VscsTweaksPresence), this one stops and leaves the field to it. The check runs on the
+    /// timer rather than at startup, since vatSys may load VSCS Tweaks after this plugin.
     /// </summary>
     internal sealed class VscsCallsignLimit
     {
         private const int TickMilliseconds = 1000;
         private const int NewLimit = 12;
-        private const string VscsTweaksAssembly = "VscsTweaksPlugin";
 
         private const BindingFlags NonPublicStatic = BindingFlags.NonPublic | BindingFlags.Static;
         private const BindingFlags NonPublicInstance = BindingFlags.NonPublic | BindingFlags.Instance;
@@ -50,7 +49,7 @@ namespace PainRelief
 
             try
             {
-                if (VscsTweaksLoaded())
+                if (VscsTweaksPresence.IsLoaded)
                 {
                     timer.Change(Timeout.Infinite, Timeout.Infinite); // VSCS Tweaks handles it
                     return;
@@ -65,16 +64,6 @@ namespace PainRelief
             {
                 Volatile.Write(ref ticking, 0);
             }
-        }
-
-        private static bool VscsTweaksLoaded()
-        {
-            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                if (string.Equals(assembly.GetName().Name, VscsTweaksAssembly, StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-            return false;
         }
 
         private void Apply()
