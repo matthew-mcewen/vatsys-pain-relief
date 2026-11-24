@@ -1,7 +1,5 @@
 using System;
-using System.IO;
 using System.Linq;
-using System.Media;
 using System.Reflection;
 using RossCarlson.Vatsim.Network;
 using RossCarlson.Vatsim.Network.PDU;
@@ -10,7 +8,7 @@ using vatsys;
 namespace PainRelief
 {
     /// <summary>
-    /// Plays rejected.wav when a controller refuses a handoff we made.
+    /// Plays a sound when a controller refuses a handoff we made.
     ///
     /// A refusal arrives as a "handoff cancelled" from the controller we handed off to, for an
     /// FDR we still track. That is exactly how vatSys recognises one (Network.
@@ -23,14 +21,13 @@ namespace PainRelief
     /// the network session's event by reflection. It only reads; nothing is changed. If a vatSys
     /// update renames the members it needs, one error is raised and there is simply no sound.
     ///
-    /// Plays rejected.wav from the folder the plugin DLL is in, or a Windows system sound if that
-    /// file isn't there.
+    /// Plays the WAV file given (HandoffRefusedSound in PainRelief.conf, refused.wav by default),
+    /// or a Windows system sound if it can't be loaded.
     /// </summary>
     internal sealed class HandoffRefusedChime
     {
         private const BindingFlags NonPublicStatic = BindingFlags.NonPublic | BindingFlags.Static;
         private const BindingFlags NonPublicInstance = BindingFlags.NonPublic | BindingFlags.Instance;
-        private const string SoundFileName = "rejected.wav";
 
         // Network.Instance (internal static) -> the Network singleton
         private static readonly FieldInfo NetworkInstanceField = typeof(Network).GetField("Instance", NonPublicStatic);
@@ -40,15 +37,16 @@ namespace PainRelief
         private static readonly FieldInfo CancelledEventField = typeof(FSDSession).GetField("HandoffCancelledReceived", NonPublicInstance);
 
         private readonly EventHandler<DataReceivedEventArgs<PDUHandoffCancelled>> handler;
-        private readonly SoundPlayer player;
+        private readonly Chime sound;
         private readonly object hookLock = new object();
         private FSDSession hookedSession;
         private bool hookFailureReported;
         private bool errorReported;
 
-        public HandoffRefusedChime()
+        /// <param name="sound">Played when a handoff we made is refused.</param>
+        public HandoffRefusedChime(Chime sound)
         {
-            player = LoadPlayer();
+            this.sound = sound;
             handler = OnHandoffCancelled;
             Network.Connected += (sender, e) => EnsureHooked();
             EnsureHooked();
@@ -104,7 +102,7 @@ namespace PainRelief
                     string.Equals(f.HandoffController?.Callsign, pdu.From, StringComparison.OrdinalIgnoreCase));
 
                 if (fdr != null && fdr.IsTrackedByMe)
-                    Play();
+                    sound.Play();
             }
             catch (Exception ex)
             {
@@ -115,38 +113,5 @@ namespace PainRelief
             }
         }
 
-        private void Play()
-        {
-            try
-            {
-                if (player != null)
-                    player.Play(); // plays on its own thread; doesn't block
-                else
-                    SystemSounds.Hand.Play();
-            }
-            catch
-            {
-                // A sound problem must never get in the way of anything else.
-            }
-        }
-
-        private static SoundPlayer LoadPlayer()
-        {
-            try
-            {
-                string folder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                string file = Path.Combine(folder, SoundFileName);
-                if (!File.Exists(file))
-                    return null;
-
-                SoundPlayer p = new SoundPlayer(file);
-                p.Load();
-                return p;
-            }
-            catch
-            {
-                return null;
-            }
-        }
     }
 }

@@ -10,7 +10,8 @@ namespace PainRelief
 {
     /// <summary>
     /// Adds Tools → Reject Handoff, listing every handoff addressed to us that we haven't
-    /// accepted. Picking one refuses it.
+    /// accepted. Picking one refuses it. Also adds "Reject" under "Accept" in the menu that opens
+    /// on an aircraft's label, shown only for a handoff addressed to us.
     ///
     /// vatSys has no way to refuse an incoming handoff: you can only accept it or leave it. But it
     /// already has both halves of a refusal, used when it refuses a handoff for an inactive plan
@@ -23,6 +24,11 @@ namespace PainRelief
     /// Network.CancelHandoff is internal, so it is reached by reflection. If a vatSys update
     /// renames it, the menu item reports one error and does nothing else; the handoff is left as
     /// it was.
+    ///
+    /// vatSys has no plugin hook for the aircraft menu, so the item is inserted into vatSys's own
+    /// menu (the private MMI.aircraftMenu). vatSys hides every item and then shows the ones that
+    /// apply each time it opens the menu; ours decides for itself as the menu opens. If the menu
+    /// can't be found, one error is raised and Tools → Reject Handoff still works.
     /// </summary>
     internal sealed class HandoffReject
     {
@@ -34,6 +40,9 @@ namespace PainRelief
         // Network.CancelHandoff(FDR, NetworkATC) (internal) -> sends the "handoff cancelled" PDU
         private static readonly MethodInfo CancelHandoffMethod = typeof(Network).GetMethod(
             "CancelHandoff", NonPublicInstance, null, new[] { typeof(FDP2.FDR), typeof(NetworkATC) }, null);
+        // MMI.aircraftMenu (private static) -> the menu that opens on an aircraft's label
+        private static readonly FieldInfo AircraftMenuField = typeof(MMI).GetField("aircraftMenu", NonPublicStatic);
+        private const string AcceptText = "Accept";
 
         private readonly HandoffChime chime;
         private readonly ToolStripMenuItem menu;
@@ -51,6 +60,69 @@ namespace PainRelief
 
             MMI.AddCustomMenuItem(new CustomToolStripMenuItem(
                 CustomToolStripMenuItemWindowType.Main, CustomToolStripMenuItemCategory.Tools, menu));
+
+            AddToAircraftMenu();
+        }
+
+        /// <summary>Puts "Reject" straight after "Accept" in vatSys's aircraft menu.</summary>
+        private void AddToAircraftMenu()
+        {
+            try
+            {
+                if (!(AircraftMenuField?.GetValue(null) is ContextMenuStrip aircraftMenu))
+                    throw new MissingFieldException("MMI.aircraftMenu not found");
+
+                // The menu's first item is the aircraft's callsign; vatSys sets its text before
+                // opening the menu, so that's the aircraft the menu is for. For a track with no
+                // FDR vatSys only hides that item, leaving the last aircraft's callsign in it, so
+                // the callsign counts only while the item is shown. (Available, not Visible:
+                // Visible is false for every item until the menu itself is on screen.)
+                Func<string> menuCallsign = () =>
+                    aircraftMenu.Items.Count > 0 && aircraftMenu.Items[0].Available ? aircraftMenu.Items[0].Text : null;
+                PropertyInfo asmgcsProperty = aircraftMenu.GetType().GetProperty("ASMGCS");
+
+                ToolStripMenuItem reject = new ToolStripMenuItem("Reject") { Visible = false };
+                reject.Click += (sender, e) =>
+                {
+                    FDP2.FDR fdr = IncomingHandoff(menuCallsign());
+                    if (fdr != null)
+                        Reject(fdr);
+                };
+                aircraftMenu.Opening += (sender, e) =>
+                {
+                    try
+                    {
+                        bool asmgcs = asmgcsProperty?.GetValue(aircraftMenu) is bool b && b;
+                        reject.Visible = !asmgcs && IncomingHandoff(menuCallsign()) != null;
+                    }
+                    catch (Exception ex)
+                    {
+                        reject.Visible = false;
+                        Report(ex);
+                    }
+                };
+
+                int accept = -1;
+                for (int i = 0; i < aircraftMenu.Items.Count; i++)
+                    if (aircraftMenu.Items[i].Text == AcceptText)
+                        accept = i;
+                if (accept < 0)
+                    aircraftMenu.Items.Add(reject);
+                else
+                    aircraftMenu.Items.Insert(accept + 1, reject);
+            }
+            catch (Exception ex)
+            {
+                Report(ex);
+            }
+        }
+
+        /// <summary>The unaccepted handoff to us for this callsign, or null.</summary>
+        private static FDP2.FDR IncomingHandoff(string callsign)
+        {
+            if (string.IsNullOrEmpty(callsign))
+                return null;
+            return IncomingHandoffs().FirstOrDefault(f => string.Equals(f.Callsign, callsign, StringComparison.OrdinalIgnoreCase));
         }
 
         private void Fill()

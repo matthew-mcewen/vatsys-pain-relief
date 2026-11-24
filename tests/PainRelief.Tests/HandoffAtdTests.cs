@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace PainRelief.Tests
@@ -90,6 +91,53 @@ namespace PainRelief.Tests
         public void Boundary_AbsurdlyLongFlight_IsNull()
         {
             Assert.Null(HandoffAtd.AtdForBoundary(Now, Now, Now + TimeSpan.FromHours(30), Ten));
+        }
+
+        private static KeyValuePair<TimeSpan, bool> Crossing(int minutes, bool ours)
+        {
+            return new KeyValuePair<TimeSpan, bool>(TimeSpan.FromMinutes(minutes), ours);
+        }
+
+        [Fact]
+        public void Offset_FirstCrossingIntoOurSectorsAhead()
+        {
+            var crossings = new[] { Crossing(0, false), Crossing(90, false), Crossing(150, true), Crossing(200, false) };
+            Assert.Equal(TimeSpan.FromMinutes(150), HandoffAtd.BoundaryOffset(crossings, TimeSpan.Zero));
+            Assert.Equal(TimeSpan.FromMinutes(150), HandoffAtd.BoundaryOffset(crossings, TimeSpan.FromMinutes(120)));
+        }
+
+        [Fact]
+        public void Offset_AlreadyInsideOurSector_IsThatCrossing()
+        {
+            var crossings = new[] { Crossing(0, false), Crossing(150, true), Crossing(200, false) };
+            Assert.Equal(TimeSpan.FromMinutes(150), HandoffAtd.BoundaryOffset(crossings, TimeSpan.FromMinutes(170)));
+        }
+
+        [Fact]
+        public void Offset_SkipsACrossingAlreadyLeftBehind()
+        {
+            // Through our first sector and out again; the next one of ours is still ahead.
+            var crossings = new[] { Crossing(30, true), Crossing(60, false), Crossing(150, true) };
+            Assert.Equal(TimeSpan.FromMinutes(150), HandoffAtd.BoundaryOffset(crossings, TimeSpan.FromMinutes(90)));
+        }
+
+        [Fact]
+        public void Offset_NullWhenRouteNeverEntersOurSectors()
+        {
+            Assert.Null(HandoffAtd.BoundaryOffset(new[] { Crossing(0, false), Crossing(90, false) }, TimeSpan.Zero));
+            Assert.Null(HandoffAtd.BoundaryOffset(new KeyValuePair<TimeSpan, bool>[0], TimeSpan.Zero));
+            Assert.Null(HandoffAtd.BoundaryOffset(null, TimeSpan.Zero));
+            // Past the last crossing of all: vatSys has no entry time for that either.
+            Assert.Null(HandoffAtd.BoundaryOffset(new[] { Crossing(30, true) }, TimeSpan.FromMinutes(90)));
+        }
+
+        [Fact]
+        public void Offset_ThenAtd_PlacesAircraftLeadShortOfBoundary()
+        {
+            // No EET, so activated "now"; the boundary is 150 min of flying from departure.
+            var crossings = new[] { Crossing(0, false), Crossing(150, true) };
+            TimeSpan offset = HandoffAtd.BoundaryOffset(crossings, TimeSpan.Zero).Value;
+            Assert.Equal(Now - TimeSpan.FromMinutes(140), HandoffAtd.AtdForBoundary(Now, Now, Now + offset, Ten));
         }
     }
 }

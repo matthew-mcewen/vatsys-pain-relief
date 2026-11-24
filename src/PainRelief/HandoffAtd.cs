@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace PainRelief
 {
@@ -7,10 +8,10 @@ namespace PainRelief
     /// flying time BEFORE it enters our airspace - 10 minutes for a centre (_CTR) position,
     /// 5 minutes for an approach (_APP) position.
     ///
-    /// vatSys already knows when an FDR's route enters the sectors we control (its sector entry
-    /// time), and that time moves one-for-one with the ATD. So rather than doing any geometry or
-    /// speed maths here, we activate the FDR, read vatSys's own entry time, and shift the ATD by
-    /// the difference. Ground speed is therefore whatever vatSys uses (the FDR's TAS).
+    /// vatSys already knows where an FDR's route crosses into the sectors we control and how long
+    /// each leg of the route takes, and none of that depends on the ATD. So rather than doing any
+    /// geometry or speed maths here, we add up vatSys's own leg times to the boundary and set the
+    /// ATD from that. Ground speed is therefore whatever vatSys uses (the FDR's TAS).
     ///
     ///   time from departure to the boundary = entry time - ATD used when we asked
     ///   wanted time from departure          = that - lead
@@ -43,6 +44,35 @@ namespace PainRelief
                 return CentreLead;
             if (c.EndsWith(ApproachSuffix, StringComparison.Ordinal))
                 return ApproachLead;
+            return null;
+        }
+
+        /// <summary>
+        /// The flying time from departure to the point where the route enters our airspace, picked
+        /// the way vatSys picks its sector entry time (MMI.GetSectorEntryTime): the first crossing
+        /// into one of our sectors that is still ahead of the aircraft, or that it is inside now
+        /// (passed, but the next crossing isn't reached yet).
+        /// </summary>
+        /// <param name="crossings">Every sector boundary crossing on the route, in route order:
+        /// the flying time from departure to it, and whether it enters a sector we control.</param>
+        /// <param name="flown">How long the aircraft has been flying.</param>
+        /// <returns>Null if the route has no such crossing.</returns>
+        public static TimeSpan? BoundaryOffset(IList<KeyValuePair<TimeSpan, bool>> crossings, TimeSpan flown)
+        {
+            if (crossings == null)
+                return null;
+
+            for (int i = 0; i < crossings.Count; i++)
+            {
+                if (!crossings[i].Value)
+                    continue;
+
+                TimeSpan at = crossings[i].Key;
+                bool ahead = flown < at;
+                bool inside = i + 1 < crossings.Count && flown > at && flown < crossings[i + 1].Key;
+                if (ahead || inside)
+                    return at;
+            }
             return null;
         }
 

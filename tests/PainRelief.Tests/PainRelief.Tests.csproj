@@ -11,6 +11,10 @@
          without vatSys installed. -->
     <Compile Include="..\..\src\PainRelief\HandoffAtd.cs" Link="HandoffAtd.cs" />
     <Compile Include="..\..\src\PainRelief\ChimeSchedule.cs" Link="ChimeSchedule.cs" />
+    <Compile Include="..\..\src\PainRelief\FsdLogFormat.cs" Link="FsdLogFormat.cs" />
+    <Compile Include="..\..\src\PainRelief\PainReliefConfig.cs" Link="PainReliefConfig.cs" />
+    <!-- The shipped settings file, so the tests can check it reads as the defaults. -->
+    <None Include="..\..\src\PainRelief\PainRelief.conf" Link="PainRelief.conf" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

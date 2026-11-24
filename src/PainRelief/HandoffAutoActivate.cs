@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using RossCarlson.Vatsim.Network;
@@ -39,14 +40,17 @@ namespace PainRelief
 
         private readonly EventHandler<DataReceivedEventArgs<PDUHandoff>> handler;
         private readonly HandoffChime chime;
+        private readonly bool activate;
         private readonly object hookLock = new object();
         private FSDSession hookedSession;
         private bool hookFailureReported;
 
         /// <param name="chime">Told about every handoff addressed to us; may be null.</param>
-        public HandoffAutoActivate(HandoffChime chime)
+        /// <param name="activate">False to only tell the chime, without activating anything.</param>
+        public HandoffAutoActivate(HandoffChime chime, bool activate)
         {
             this.chime = chime;
+            this.activate = activate;
             handler = OnHandoffReceived;
             Network.Connected += (sender, e) => EnsureHooked();
             EnsureHooked();
@@ -104,10 +108,26 @@ namespace PainRelief
                 if (fdr == null)
                     return;
 
-                // Every handoff to us gets the unaccepted-handoff chime, whether or not the FDR
-                // needs activating below.
-                chime?.HandoffReceived(fdr, pdu.From);
+                if (activate)
+                    Activate(fdr, pdu);
 
+                // Every handoff to us that vatSys is about to put into handover-in gets the
+                // chime. One for an FDR that still isn't active is refused by vatSys straight
+                // after this, so there is nothing to accept and nothing to chime about.
+                if (fdr.State >= FDP2.FDR.FDRStates.STATE_UNCONTROLLED)
+                    chime?.HandoffReceived(fdr, pdu.From);
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not handle incoming handoff. " + ex.Message, ex), PainReliefPlugin.ErrorSource);
+            }
+        }
+
+        /// <summary>Activates the FDR if it is inactive, preactive or coordinated.</summary>
+        private static void Activate(FDP2.FDR fdr, PDUHandoff pdu)
+        {
+            try
+            {
                 if (fdr.State != FDP2.FDR.FDRStates.STATE_INACTIVE &&
                     fdr.State != FDP2.FDR.FDRStates.STATE_PREACTIVE &&
                     fdr.State != FDP2.FDR.FDRStates.STATE_COORDINATED)
@@ -137,6 +157,10 @@ namespace PainRelief
                     // A nicety only; never let it stop the activation.
                 }
 
+                // Then, for a _CTR/_APP position, the ATD that shows the aircraft a fixed time
+                // before it enters our airspace.
+                atd = PlaceBeforeBoundary(fdr, atd, now);
+
                 // This is what the "activate" menu item does. An ATD in the past/present
                 // makes the state change happen immediately.
                 FDP2.DepartFDR(fdr, atd, true);
@@ -145,8 +169,6 @@ namespace PainRelief
                 // that vatSys processes next can't be refused.
                 if (fdr.State < FDP2.FDR.FDRStates.STATE_UNCONTROLLED)
                     fdr.State = FDP2.FDR.FDRStates.STATE_CONTROLLED;
-
-                PlaceBeforeBoundary(fdr, atd, now);
             }
             catch (Exception ex)
             {
@@ -155,48 +177,54 @@ namespace PainRelief
         }
 
         /// <summary>
-        /// Refines the ATD so the aircraft is shown a fixed time before it enters our airspace
-        /// (10 min for a _CTR position, 5 min for _APP; see HandoffAtd). Only ever runs once, as
-        /// the FDR is activated, so an ATD a controller types in afterwards is left alone.
+        /// The ATD that shows the aircraft a fixed time before it enters our airspace (10 min for
+        /// a _CTR position, 5 min for _APP; see HandoffAtd), or <paramref name="atd"/> unchanged
+        /// if the route never enters our sectors or we are not a _CTR/_APP position. Only ever
+        /// worked out once, as the FDR is activated, so an ATD a controller types in afterwards
+        /// is left alone.
         ///
-        /// The FDR has just been activated with <paramref name="activatedAtd"/>, so vatSys can now
-        /// tell us when that puts the aircraft into the sectors we control. We shift the ATD by the
-        /// difference. If vatSys has no entry time (route never enters our sectors) or we are not
-        /// a _CTR/_APP position, the ATD from activation stands.
+        /// The flying time to the boundary is added up from vatSys's own leg times along the
+        /// route, which it worked out when the plan was filed and which don't depend on the ATD.
+        /// It can't be read back as an entry time after activating instead: vatSys recalculates
+        /// the route's estimates on a background queue, so straight after FDP2.DepartFDR they are
+        /// still the ones from before the activation.
         /// </summary>
-        private static void PlaceBeforeBoundary(FDP2.FDR fdr, DateTime activatedAtd, DateTime now)
+        private static DateTime PlaceBeforeBoundary(FDP2.FDR fdr, DateTime atd, DateTime now)
         {
             try
             {
                 TimeSpan? lead = HandoffAtd.LeadForCallsign(Network.Me.Callsign);
                 if (lead == null)
-                    return;
+                    return atd;
 
-                DateTime entry = MMI.GetSectorEntryTime(fdr);
-                DateTime? wanted = HandoffAtd.AtdForBoundary(now, activatedAtd, entry, lead.Value);
-                if (wanted == null)
-                    return;
-
-                TimeSpan shift = wanted.Value - activatedAtd;
-                if (Math.Abs(shift.TotalSeconds) < 5)
-                    return;
-
-                FDP2.DepartFDR(fdr, wanted.Value, true);
-
-                // The entry time should have moved by exactly the shift. If it didn't, vatSys
-                // ignored the second ATD (or hasn't recalculated yet) and the aircraft is not
-                // where we meant to put it.
-                DateTime after = MMI.GetSectorEntryTime(fdr);
-                if (Math.Abs((after - (entry + shift)).TotalSeconds) > 60)
+                // Each ZPOINT is where the route crosses into a sector volume; a segment's EET
+                // is the flying time from the segment before it.
+                IList<SectorsVolumes.Sector> ours = MMI.SectorsControlled;
+                List<FDP2.FDR.ExtractedRoute.Segment> route = fdr.ParsedRoute.ToList();
+                var crossings = new List<KeyValuePair<TimeSpan, bool>>();
+                TimeSpan fromDeparture = TimeSpan.Zero;
+                for (int i = 0; i < route.Count; i++)
                 {
-                    Errors.Add(new Exception(
-                        "Could not move " + fdr.Callsign + " to " + (int)lead.Value.TotalMinutes +
-                        " minutes before the boundary: vatSys did not apply the new ATD."), PainReliefPlugin.ErrorSource);
+                    if (i > 0)
+                        fromDeparture += route[i].EET;
+                    if (route[i].Type != FDP2.FDR.ExtractedRoute.Segment.SegmentTypes.ZPOINT)
+                        continue;
+
+                    SectorsVolumes.Volume volume = route[i].Tag as SectorsVolumes.Volume;
+                    bool entersOurs = volume != null && ours.Any(s => s.Volumes.Contains(volume));
+                    crossings.Add(new KeyValuePair<TimeSpan, bool>(fromDeparture, entersOurs));
                 }
+
+                TimeSpan? toBoundary = HandoffAtd.BoundaryOffset(crossings, now - atd);
+                if (toBoundary == null)
+                    return atd;
+
+                return HandoffAtd.AtdForBoundary(now, atd, atd + toBoundary.Value, lead.Value) ?? atd;
             }
             catch (Exception ex)
             {
                 Errors.Add(new Exception("Could not position handoff before the airspace boundary. " + ex.Message, ex), PainReliefPlugin.ErrorSource);
+                return atd;
             }
         }
     }

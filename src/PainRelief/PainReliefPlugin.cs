@@ -8,7 +8,7 @@ namespace PainRelief
     /// <summary>
     /// Plugin entry point. vatSys discovers this through the MEF [Export] attribute and
     /// creates one instance at startup. Each pain-point fix lives in its own class and is
-    /// wired up here.
+    /// wired up here, if PainRelief.conf has it switched on (read once, at startup).
     /// </summary>
     [Export(typeof(IPlugin))]
     public class PainReliefPlugin : IPlugin
@@ -32,15 +32,26 @@ namespace PainRelief
 
         private readonly DisplaySettingsWindowDpiFix displaySettingsWindowDpiFix;
         private readonly VscsDpiFix vscsDpiFix;
+        private readonly StripPanelDpiFix stripPanelDpiFix;
         private readonly AudioSettingsWindowDpiFix audioSettingsWindowDpiFix;
+        private readonly FsdLogger fsdLogger;
 
         public string Name => "Pain Relief v" + Version;
 
         public PainReliefPlugin()
         {
+            string folder = System.IO.Path.GetDirectoryName(typeof(PainReliefPlugin).Assembly.Location) ?? "";
+            string configPath = System.IO.Path.Combine(folder, PainReliefConfig.FileName);
+            CreateConfigIfMissing(configPath);
+            PainReliefConfig config = PainReliefConfig.Load(configPath);
+
             try
             {
-                handoffChime = new HandoffChime();
+                if (config.HandoffChime)
+                    handoffChime = new HandoffChime(
+                        new Chime(config.HandoffIncomingSound(folder), System.Media.SystemSounds.Asterisk),
+                        new Chime(config.HandoffNudgeSound(folder), System.Media.SystemSounds.Exclamation),
+                        config.NudgeSchedule);
             }
             catch (Exception ex)
             {
@@ -49,7 +60,9 @@ namespace PainRelief
 
             try
             {
-                handoffAutoActivate = new HandoffAutoActivate(handoffChime);
+                // Also the source of incoming handoffs for the chime, so it's needed for either.
+                if (config.HandoffAutoActivate || handoffChime != null)
+                    handoffAutoActivate = new HandoffAutoActivate(handoffChime, config.HandoffAutoActivate);
             }
             catch (Exception ex)
             {
@@ -58,7 +71,8 @@ namespace PainRelief
 
             try
             {
-                handoffRefusedChime = new HandoffRefusedChime();
+                handoffRefusedChime = new HandoffRefusedChime(
+                    new Chime(config.HandoffRefusedSound(folder), System.Media.SystemSounds.Hand));
             }
             catch (Exception ex)
             {
@@ -85,7 +99,8 @@ namespace PainRelief
 
             try
             {
-                aboutWindowDpiFix = new AboutWindowDpiFix();
+                if (config.ScalingFixes)
+                    aboutWindowDpiFix = new AboutWindowDpiFix();
             }
             catch (Exception ex)
             {
@@ -94,7 +109,8 @@ namespace PainRelief
 
             try
             {
-                sectorWindowDpiFix = new SectorWindowDpiFix();
+                if (config.ScalingFixes)
+                    sectorWindowDpiFix = new SectorWindowDpiFix();
             }
             catch (Exception ex)
             {
@@ -103,7 +119,8 @@ namespace PainRelief
 
             try
             {
-                displaySettingsWindowDpiFix = new DisplaySettingsWindowDpiFix();
+                if (config.ScalingFixes)
+                    displaySettingsWindowDpiFix = new DisplaySettingsWindowDpiFix();
             }
             catch (Exception ex)
             {
@@ -112,7 +129,8 @@ namespace PainRelief
 
             try
             {
-                vscsDpiFix = new VscsDpiFix();
+                if (config.ScalingFixes)
+                    vscsDpiFix = new VscsDpiFix();
             }
             catch (Exception ex)
             {
@@ -121,11 +139,48 @@ namespace PainRelief
 
             try
             {
-                audioSettingsWindowDpiFix = new AudioSettingsWindowDpiFix();
+                if (config.ScalingFixes)
+                    stripPanelDpiFix = new StripPanelDpiFix();
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start strip window scaling fix. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                if (config.ScalingFixes)
+                    audioSettingsWindowDpiFix = new AudioSettingsWindowDpiFix();
             }
             catch (Exception ex)
             {
                 Errors.Add(new Exception("Could not start Audio Settings window scaling fix. " + ex.Message, ex), ErrorSource);
+            }
+
+            try
+            {
+                fsdLogger = new FsdLogger(folder, configPath);
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not start FSD logging. " + ex.Message, ex), ErrorSource);
+            }
+        }
+
+        /// <summary>Writes out the default PainRelief.conf (embedded in the DLL) if there is none.</summary>
+        private static void CreateConfigIfMissing(string path)
+        {
+            try
+            {
+                if (System.IO.File.Exists(path))
+                    return;
+                using (System.IO.Stream source = typeof(PainReliefPlugin).Assembly.GetManifestResourceStream(PainReliefConfig.FileName))
+                using (System.IO.FileStream target = System.IO.File.Create(path))
+                    source?.CopyTo(target);
+            }
+            catch (Exception ex)
+            {
+                Errors.Add(new Exception("Could not create " + path + ": " + ex.Message, ex), ErrorSource);
             }
         }
 
@@ -135,6 +190,7 @@ namespace PainRelief
             // safety net for re-installing the hook if the network session was replaced.
             handoffAutoActivate?.EnsureHooked();
             handoffRefusedChime?.EnsureHooked();
+            fsdLogger?.EnsureHooked();
         }
 
         public void OnRadarTrackUpdate(RDP.RadarTrack updated)

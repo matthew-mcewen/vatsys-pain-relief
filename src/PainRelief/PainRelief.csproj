@@ -7,7 +7,7 @@
     <RootNamespace>PainRelief</RootNamespace>
     <!-- The plugin's version: the only place to set it. The code reads it from the built DLL.
          Bump major for changes that break existing behaviour, minor for features, patch for fixes. -->
-    <Version>1.3.2</Version>
+    <Version>1.4.1</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
@@ -53,10 +53,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The chime played for unaccepted handoffs; sits next to the DLL. -->
-    <None Update="chime.wav" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Played as a handoff to us arrives, and while it waits unaccepted; next to the DLL. -->
+    <None Update="incoming.wav" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="nudge.wav" CopyToOutputDirectory="PreserveNewest" />
     <!-- Played when a controller refuses a handoff we made. -->
-    <None Update="rejected.wav" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="refused.wav" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The settings file. Also embedded, so the plugin can write it out if it's missing. -->
+    <None Update="PainRelief.conf" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="PainRelief.conf" LogicalName="PainRelief.conf" />
   </ItemGroup>
 
   <!-- Release builds also package the plugin, ready to hand out:
@@ -70,7 +74,7 @@
       <PackageZip>$(OutDir)PainRelief-v$(Version).zip</PackageZip>
     </PropertyGroup>
     <ItemGroup>
-      <PluginFile Include="$(TargetPath);$(MSBuildProjectDirectory)\chime.wav;$(MSBuildProjectDirectory)\rejected.wav" />
+      <PluginFile Include="$(TargetPath);$(MSBuildProjectDirectory)\incoming.wav;$(MSBuildProjectDirectory)\nudge.wav;$(MSBuildProjectDirectory)\refused.wav;$(MSBuildProjectDirectory)\PainRelief.conf" />
     </ItemGroup>
 
     <!-- Start clean so files removed from the plugin don't linger in the package. -->
